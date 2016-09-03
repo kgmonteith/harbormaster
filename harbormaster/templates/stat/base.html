@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block style %}
+{% endblock %}
+
+{% block super_scripts %}
+<script src="https://code.highcharts.com/highcharts.js"></script>
+{% endblock %}
+
+{% block base_content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-sm-3 col-md-2 sidebar">
+      <div><h4>Live stream</h4></div> 
+      <ul class="nav nav-sidebar">
+        <li{% if active == "active ships" %} class="active"{% endif %}><a href="{% url 'list_active_ships' %}">Active ships <span class="sr-only">(current)</span></a></li>
+        <li{% if active == "active other" %} class="active"{% endif %}><a href="{% url 'list_active_other' %}">Other active contacts</a></li>
+      </ul>
+      <div><h4>Recent</h4></div> 
+      <ul class="nav nav-sidebar">
+        <li><a href="">Today's new contacts</a></li>
+        <li><a href="">Yesterday's new contacts</a></li>
+      </ul>
+      <div><h4>Historical</h4></div> 
+      <ul class="nav nav-sidebar">
+        <li{% if active == "historic ships" %} class="active"{% endif %}><a href="{% url 'list_historic_ships' %}">All ships</a></li>
+        <li{% if active == "historic other" %} class="active"{% endif %}><a href="{% url 'list_historic_other' %}">All other contacts</a></li>
+      </ul>
+    </div>
+    <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+
+
+  <div class="row">
+    <div class="col-md-12 text-right">
+      <form class="form-inline" action="{{ request.path }}" method="post">
+        {% csrf_token %}
+        <label for="collectionLabel">Collection label </label>
+        <select class="selectpicker show-tick" data-live-search="true" id="collectionLabel" name="currentLabel">
+          <option value="*">Any</option>
+          <option value="None">Default</option>
+          {% if collection_labels %}
+          <option data-divider="true"></option>
+          {% endif %}
+          {% for label in collection_labels %}
+          <option data-subtext="{{ label.start_date|date:"j-n-Y"}}"{% if current_label == label.name %} selected{% endif %}>{{ label.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+    </div>
+  </div>
+  <div class="row">
+    <hr>
+  </div>
+
+    {% block content %}
+    {% endblock %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

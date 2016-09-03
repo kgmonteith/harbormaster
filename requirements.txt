@@ -1,0 +1,5 @@
+Django
+psycopg2
+libais
+django-websocket-redis
+django-redis-sessions

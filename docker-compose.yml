@@ -1,0 +1,21 @@
+version: '2'
+services:
+  db:
+    image: postgres
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+  redis:
+    image: redis
+  web:
+    build: .
+    command: ./wait-for-it.sh db:5432 -- python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+volumes:
+  dbdata:
+    driver: local
