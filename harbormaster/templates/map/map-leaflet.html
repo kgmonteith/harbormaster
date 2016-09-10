@@ -1,0 +1,91 @@
+{% extends "map/base.html" %}
+{% load static %}
+
+{% block style %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0-rc.3/dist/leaflet.css" />
+<style>
+#map-canvas {
+    width: 100%;
+}
+
+div#footer {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	width: 100%;
+	height: 18px;
+	margin: 0;
+	padding: 6px;
+	z-index: 2;
+	background: white;
+}
+
+.main {
+  padding: 0px;
+}
+@media (min-width: 768px) {
+  .main {
+    padding-right: 0px;
+    padding-left: 0px;
+  }
+}
+.main .page-header {
+  margin-top: 0;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.0.0-rc.3/dist/leaflet.js"></script>
+<script src="{% static 'js/leaflet.rotatedMarker.js' %}"></script>
+
+<script type="text/javascript">
+$(window).resize(function () {
+    var h = $(window).height(),
+        offsetTop = 50; // Calculate the top offset
+
+    $('#map-canvas').css('height', (h - offsetTop));
+}).resize();
+
+window.onload = function() {
+	var map = L.map('map-canvas').setView([39.2904, -76.6122], 12);
+
+	L.tileLayer( 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+	    subdomains: ['a','b','c']
+	}).addTo( map );
+
+	var icon = "<svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='10' height='10'><path stroke='red' stroke-width='2' fill='none' d='M 0,0 L 10,10 M 10,0 L 0,10 Z'/></svg>";
+
+	// here's the trick, base64 encode the URL
+	var svgURL = "data:image/svg+xml;base64," + btoa(icon);
+
+	// create icon
+	var mySVGIcon = L.icon( {
+	    iconUrl: svgURL,
+	    iconSize: [10, 10],
+	    shadowSize: [12, 10],
+	    iconAnchor: [5, 5],
+	    popupAnchor: [5, -5]
+	} );
+
+	// 
+	var marker = L.marker( [ 39.2904, -76.6122 ], {icon: mySVGIcon, rotationAngle: 20 } ).addTo(map);
+
+
+	var metresPerPixel = 40075016.686 * Math.abs(Math.cos(map.getCenter().lat * 180/Math.PI)) / Math.pow(2, map.getZoom()+8);
+	console.log(metresPerPixel);
+
+	map.on('zoomend', function() {
+	  var currentZoom = map.getZoom();
+	  marker.setRadius(currentZoom);
+	});
+}
+
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="map-canvas"></div>
+{% endblock %}

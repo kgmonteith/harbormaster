@@ -1,4 +1,5 @@
 {% extends "map/base.html" %}
+{% load static %}
 
 {% block style %}
 <style>
@@ -45,10 +46,29 @@ $(window).resize(function () {
     $('#map-canvas').css('height', (h - offsetTop));
 }).resize();
 
-function initialize() {
+var map, contacts;
+var None = null;
+
+contacts = {
+{% for contact in contacts %}
+	{{ contact.mmsi }}:
+		{
+			position: new google.maps.LatLng({{ contact.latest_lat }},{{ contact.latest_lng }}),
+			heading: {{ contact.latest_heading }},
+			speed: {{ contact.latest_speed }},
+			length: {% if contact.length is not None %}{{ contact.length }}{% else %}0{% endif %},
+			width: {% if contact.width is not None %}{{ contact.width }}{% else %}0{% endif %},
+			to_bow: {{ contact.dim_to_bow }},
+			to_port: {{ contact.dim_to_port }},
+			name: "{{ contact.name }}",
+		},
+{% endfor %}
+}
+
+$(document).ready(function () {
 	var mapOptions = {
-		center: new google.maps.LatLng(39.2904, -76.6122),
-		zoom: 12,
+		center: new google.maps.LatLng(39.263746490478516, -76.5863037109375),
+		zoom: 14,
 		draggable: true,
 		mapTypeId: "OSM",
 		panControl: true,
@@ -60,28 +80,134 @@ function initialize() {
 		rotateControl: true,
 	};
 
-	var map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+	map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
 	map.mapTypes.set("OSM", new google.maps.ImageMapType({
 	    getTileUrl: function(coord, zoom) {
-	        // "Wrap" x (logitude) at 180th meridian properly
-	        // NB: Don't touch coord.x because coord param is by reference, and changing its x property breakes something in Google's lib 
 	        var tilesPerGlobe = 1 << zoom;
 	        var x = coord.x % tilesPerGlobe;
 	        if (x < 0) {
 	            x = tilesPerGlobe+x;
 	        }
-	        // Wrap y (latitude) in a like manner if you want to enable vertical infinite scroll
-
 	        return "http://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
 	    },
 	    tileSize: new google.maps.Size(256, 256),
 	    name: "OpenStreetMap",
 	    maxZoom: 18
 	}));
-}
-google.maps.event.addDomListener(window, 'load', initialize);
+	addCopyright();
 
+	for(var key in contacts) {
+		contacts[key].marker = new google.maps.Marker({
+	      position: contacts[key].position,
+	      icon: getShipIcon(contacts[key]),
+	      map: map
+	    });
+	    contacts[key].trail = new google.maps.Polyline({
+          strokeColor: '#000000',
+          strokeOpacity: 1.0,
+          strokeWeight: 2
+        });
+        contacts[key].textLabel = new MapLabel({
+          text: " " + contacts[key].name,
+          position: contacts[key].position,
+          map: map,
+          fontSize: 10,
+          align: 'left',
+          strokeWeight: 1.5,
+        });
+        contacts[key].marker.bindTo('position', contacts[key].textLabel)
+        contacts[key].trail.setMap(map);
+	}
+
+    map.addListener('zoom_changed', function() {
+    	for(var key in contacts) {
+    		contacts[key].marker.setIcon(getShipIcon(contacts[key]));
+    	}
+	});
+
+	var ws4redis = WS4Redis({
+		uri: '{{ WEBSOCKET_URI }}jsonStream?subscribe-broadcast&echo',
+		receive_message: receiveMessage,
+		heartbeat_msg: {{ WS4REDIS_HEARTBEAT }}
+	});
+
+	function receiveMessage(msg) {
+		msg = JSON.parse(msg);
+		key = msg['mmsi'];
+		if(msg['type'] == 'position') {
+			if(!key in contacts) {
+				console.log("New MMSI: " + key);
+			}
+			contacts[key].position = new google.maps.LatLng(msg['lat'], msg['lng']);
+			contacts[key].speed = msg['speed'];
+			contacts[key].heading = msg['heading'];
+			contacts[key].marker.setPosition(contacts[key].position);
+			contacts[key].marker.setIcon(getShipIcon(contacts[key]));
+			var path = contacts[key].trail.getPath();
+			path.push(contacts[key].position);
+			if(path.length > 20) {
+				path.removeAt(0);
+			}
+		}
+	}
+});
+
+function addCopyright() {
+	copyrightDiv = document.createElement("div")
+	copyrightDiv.id = "map-copyright"
+	copyrightDiv.style.fontSize = "11px"
+	copyrightDiv.style.fontFamily = "Arial, sans-serif"
+	copyrightDiv.style.margin = "0 2px 2px 0"
+	copyrightDiv.style.whiteSpace = "nowrap"
+	copyrightDiv.innerHTML = "&copy; OpenStreetMap"
+	map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(copyrightDiv)	
+}
+
+function getShipIcon(contact) {
+	meters_per_pixel = 156543.03392 * Math.cos(map.getCenter().lat() * Math.PI / 180) / Math.pow(2, map.getZoom());
+	pixels_per_meter = 1/meters_per_pixel;
+	color = 'blue'
+	if(contact.speed > 0.1) {
+		color = 'green'
+	}
+	if((contact.length * pixels_per_meter) < 9) {
+		if(contact.length > 120) {
+			scale = 8;
+		} else {
+			scale = 4;
+		}
+		return {
+			path: google.maps.SymbolPath.CIRCLE,
+			fillColor: color,
+			fillOpacity: 1,
+			strokeColor: color,
+			strokeWeight: 1,
+			scale: scale
+		}
+	}
+	if(contact.heading == null || contact.heading >= 511) {
+		heading = 0;
+	} else {
+		heading = contact.heading
+	}
+	return {
+		path: getSVGPath(contact.length, contact.width),
+		fillColor: color,
+		fillOpacity: 1,
+		scale: pixels_per_meter,
+		strokeColor: color,
+		strokeWeight: 1,
+		anchor: new google.maps.Point(contact.to_port, contact.to_bow),
+		rotation: heading
+	}
+}
+
+function getSVGPath(length, width) {
+	return 'M ' + width/2 + ' 0 l -' + width/2 + ' ' + length/6 + ' l 0 ' + 5*(length/6) + ' l ' + width + ' 0 l 0 -' + 5*(length/6) + ' z'
+}
 </script>
+<script src="{% static "js/ws4redis.js" %}" type="text/javascript"></script>
+<script src="{% static "js/maplabel-compiled.js" %}"></script>
 {% endblock %}
 
 {% block content %}

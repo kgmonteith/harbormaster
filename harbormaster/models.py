@@ -42,6 +42,13 @@ class Contact(models.Model):
 	max_speed = models.FloatField(null=True)
 	destination = models.CharField(max_length=255, null=True)
 
+	# Highly mutable fields for prepopulating streaming data
+	latest_lat = models.FloatField(null=True)
+	latest_lng = models.FloatField(null=True)
+	latest_speed = models.FloatField(null=True)
+	latest_heading = models.FloatField(null=True)
+	latest_navigation_status = models.IntegerField(null=True)
+
 	def __str__(self):
 		if len(self.name) > 0:
 			return "%s (%s, %s, %s)" % (self.mmsi, self.name, util.readable_ship_type(self.ship_type), self.nationality)
@@ -112,5 +119,20 @@ class Report(RawReport):
 			self.contact.dim_to_port = self.decoded['dim_c']
 		if("dim_d" in self.decoded.keys()):
 			self.contact.dim_to_starboard = self.decoded['dim_d']
+
+		if("x" in self.decoded.keys()):
+			self.contact.latest_lng = self.decoded['x']
+		if("y" in self.decoded.keys()):
+			self.contact.latest_lat = self.decoded['y']
+		if("sog" in self.decoded.keys()):
+			self.contact.latest_speed = round(self.decoded['sog'], 1)
+		if("true_heading" in self.decoded.keys()):
+			heading = self.decoded['true_heading']
+			if(heading == 511 and self.decoded['cog'] > 0):
+				heading = self.decoded['cog']
+			self.contact.latest_heading = heading
+		if("nav_status" in self.decoded.keys()):
+			self.contact.latest_navigation_status = self.decoded['nav_status']
+		
 		self.contact.last_sighting = self.time_received
 		self.contact.save()	

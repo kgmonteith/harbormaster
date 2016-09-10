@@ -51,7 +51,7 @@ navigation_status = {
     12: "Reserved",
     13: "Reserved",
     14: "AIS-SART is active",
-    15: "Undefined"
+    15: "" # Undefined default
 }
 
 def get_navigation_text(value):

@@ -22,14 +22,14 @@
 			<tbody>
 			{% for contact in contacts %}
 				<tr{% if contact.active %} class="success"{% endif %}>
-					<td>{{ contact.mmsi }} <a href="#"><span class="glyphicon glyphicon-map-marker"></span></a> <a href="http://www.marinetraffic.com/en/ais/details/ships/mmsi:{{ contact.mmsi }}" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a> <a href="#"><span class="glyphicon glyphicon-picture"></span></a></td>
-					<th scope="row"><img style="padding-right:12px" src="http://icons.iconarchive.com/icons/famfamfam/flag/16/{{ contact.flag }}-icon.png"/>{{ contact.name }}</th>
+					<td>{{ contact.mmsi }} <a href="#"><span class="glyphicon glyphicon-map-marker"></span></a> <a href="http://www.marinetraffic.com/en/ais/details/ships/mmsi:{{ contact.mmsi }}" target="_blank"><span class="glyphicon glyphicon-new-window"></span></a></td>
+					<th scope="row"><img style="padding-right:12px" src="http://icons.iconarchive.com/icons/famfamfam/flag/16/{{ contact.flag }}-icon.png" title="{{ contact.nationality }}" alt=""/>{{ contact.name }}</th>
 					<td>{{ contact.mmsi_type }}</td>
 					<td>{{ contact.readable_ship_type }}</td>
 					<td>{% if contact.draught %}{{ contact.draught }}{% endif %}</td>
 					<td>{{ contact.length }}</td>
-					<td></td>
-					<td></td>
+					<td>{{ contact.latest_speed }}</td>
+					<td>{{ contact.navigation_status_text }}</td>
 					<td>{{ contact.first_sighting|date:"Y-m-d H:i" }}</td>
 					<td>{{ contact.last_sighting|date:"Y-m-d H:i" }}</td>
 				</tr>
