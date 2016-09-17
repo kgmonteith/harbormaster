@@ -22,6 +22,7 @@ class Contact(models.Model):
 	name = models.CharField(max_length=64, blank=True)
 	first_sighting = models.DateTimeField(db_index=True, auto_now_add=True)
 	last_sighting = models.DateTimeField(null=True)
+	collection_labels = models.ManyToManyField(CollectionLabel)
 	
 	# Fields that are likely to remain static
 	imo = models.IntegerField(null=True)

@@ -149,6 +149,9 @@ def input(request, collection_label = None):
 			#if(report_type == 5 or report_type == 24):
 			#	logger.error(decoded)
 			contact, created = Contact.objects.get_or_create(mmsi=decoded['mmsi'])
+			if(collection_label not in contact.collection_labels.all()):
+				contact.collection_labels.add(collection_label)
+				contact.save()
 			report = Report.objects.create(sentence=sentence, fill_bits=fill_bits, contact=contact, report_type=report_type, collection_label=collection_label, decoded=decoded)
 			
 			# Publish to stream
